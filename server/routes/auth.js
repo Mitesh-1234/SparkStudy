@@ -28,7 +28,7 @@ router.post('/logout', (_req, res) => {
   res.clearCookie('spark-session', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    sameSite: 'lax',
     path: '/',
   });
   res.json({ ok: true });
@@ -55,7 +55,7 @@ router.post('/:mode', limiter, validate(authSchema), wrap(async (req, res) => {
   res.cookie('spark-session', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    sameSite: 'lax',
     maxAge: 30 * 60 * 1000,
     path: '/',
   });

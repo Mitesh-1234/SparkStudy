@@ -36,6 +36,10 @@ app.use(helmet({
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 app.use(mongoSanitize());
+app.use('/api', (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin && origin === process.env.APP_ORIGIN) {

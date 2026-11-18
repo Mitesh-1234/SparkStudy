@@ -1,4 +1,5 @@
-const apiOrigin = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const configuredOrigin = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const apiOrigin = import.meta.env.DEV ? configuredOrigin : '';
 
 export async function api(url, body, method = body ? 'POST' : 'GET') {
   const response = await fetch(apiOrigin + '/api' + url, {

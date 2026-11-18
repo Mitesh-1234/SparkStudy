@@ -1,0 +1,1 @@
+{"name":"studyspark-client","type":"module","scripts":{"dev":"vite","build":"vite build"},"dependencies":{"react":"^18.3.1","react-dom":"^18.3.1","@mediapipe/tasks-vision":"0.10.21","@tensorflow/tfjs":"^4.22.0","@tensorflow-models/coco-ssd":"^2.2.3"},"devDependencies":{"vite":"^6.1.0"}}

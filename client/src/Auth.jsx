@@ -11,9 +11,7 @@ export default function Auth({ onLogin }) {
 
     async function loadSignupCount() {
       try {
-        const response = await fetch('/api/auth/signup-count', { cache: 'no-store' });
-        if (!response.ok) return;
-        const result = await response.json();
+        const result = await api('/auth/signup-count');
         if (active) setSignupCount(result.count);
       } catch {
         // Keep the placeholder when the public count endpoint is unavailable.

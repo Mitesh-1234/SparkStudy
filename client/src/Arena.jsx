@@ -133,33 +133,34 @@ export default function Arena({ refresh }) {
     } finally {
       setBusy(false);
     }
+  }
 
-    async function startRoom() {
-      setBusy(true);
-      setRoomMessage('');
-      setRoomFeedback(null);
-      try {
-        await api('/arena/room/start', { code: roomCode });
-        setRoomState(await api('/arena/room/' + roomCode));
-      } catch (requestError) {
-        setRoomMessage(requestError.message);
-      } finally {
-        setBusy(false);
-      }
+  async function startRoom() {
+    if (!roomCode) return;
+    setBusy(true);
+    setRoomMessage('');
+    setRoomFeedback(null);
+    try {
+      await api('/arena/room/start', { code: roomCode });
+      setRoomState(await api('/arena/room/' + roomCode));
+    } catch (requestError) {
+      setRoomMessage(requestError.message);
+    } finally {
+      setBusy(false);
     }
+  }
 
-    async function answerRoom(choice) {
-      if (roomFeedback || busy) return;
-      setBusy(true);
-      try {
-        const result = await api('/arena/room/answer', { code: roomCode, choice });
-        setRoomFeedback(result);
-        setRoomState(await api('/arena/room/' + roomCode));
-      } catch (requestError) {
-        setRoomMessage(requestError.message);
-      } finally {
-        setBusy(false);
-      }
+  async function answerRoom(choice) {
+    if (!roomCode || roomFeedback || busy) return;
+    setBusy(true);
+    try {
+      const result = await api('/arena/room/answer', { code: roomCode, choice });
+      setRoomFeedback(result);
+      setRoomState(await api('/arena/room/' + roomCode));
+    } catch (requestError) {
+      setRoomMessage(requestError.message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -208,11 +209,11 @@ export default function Arena({ refresh }) {
                     <button type="button" disabled={busy || joinCode.length !== 6} onClick={joinRoom}>Join room</button>
                   </div>
                   {roomMessage && <p className="arena-room-message">{roomMessage}</p>}
-                  {roomCode && roomState && (
+                  {roomCode && roomState?.status && (
                     <div className="arena-live-room">
                       <div className="arena-live-head">
                         <strong>{roomState.status === 'waiting' ? 'Waiting room' : roomState.status === 'finished' ? 'Battle finished' : `Question ${roomState.index + 1} / ${roomState.question?.total || 5}`}</strong>
-                        <span>{roomState.players.length} player(s)</span>
+                        <span>{roomState.players?.length || 0} player(s)</span>
                       </div>
                       {roomState.status === 'waiting' && roomState.isOwner && (
                         <button type="button" disabled={busy} onClick={startRoom}>Start friend battle</button>
@@ -232,7 +233,7 @@ export default function Arena({ refresh }) {
                         </div>
                       )}
                       <div className="arena-room-scores">
-                        {roomState.players.map((player) => <div key={player.id}><b>{player.name}</b><span>{player.score} pts</span></div>)}
+                        {(roomState.players || []).map((player) => <div key={player.id}><b>{player.name}</b><span>{player.score} pts</span></div>)}
                       </div>
                     </div>
                   )}

@@ -9,17 +9,37 @@ import { dateKey, emptyData } from './utils';
 import './style.css';
 
 const pages = ['Overview', 'Study Planner', 'Focus Guard', 'Battle Arena', 'Create Lab', 'Analytics', 'Upgrade'];
+const dataCacheKey = 'studyspark-dashboard-cache';
+
+function readCachedData() {
+  try {
+    return JSON.parse(sessionStorage.getItem(dataCacheKey) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedData(account) {
+  try {
+    sessionStorage.setItem(dataCacheKey, JSON.stringify(account));
+  } catch {}
+}
 
 function App() {
-  const [auth, setAuth] = useState(null);
+  const cachedData = readCachedData();
+  const [auth, setAuth] = useState(cachedData ? { name: cachedData.name } : null);
   const [page, setPage] = useState('Overview');
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [data, setData] = useState(emptyData);
+  const [data, setData] = useState(cachedData || emptyData);
   const [error, setError] = useState('');
   const [capacity, setCapacity] = useState(90);
 
   async function refresh() {
-    setData(await api('/data'));
+    const account = await api('/data');
+    setData(account);
+    writeCachedData(account);
+    setAuth({ name: account.name });
+    return account;
   }
 
   async function action(callback) {
@@ -33,18 +53,22 @@ function App() {
   }
 
   useEffect(() => {
-    api('/data').then((account) => {
-      setData(account);
-      setAuth({ name: account.name });
-    }).catch(() => {});
+    let active = true;
+    refresh().catch((requestError) => {
+      if (!active) return;
+      setError(requestError.message);
+      if (requestError.message === 'Please sign in') {
+        sessionStorage.removeItem(dataCacheKey);
+        setAuth(null);
+        setData(emptyData);
+      }
+    });
+    return () => { active = false; };
   }, []);
-
-  useEffect(() => {
-    if (auth) refresh().catch((requestError) => setError(requestError.message));
-  }, [auth]);
 
   function logout() {
     api('/auth/logout', undefined, 'POST').finally(() => {
+      sessionStorage.removeItem(dataCacheKey);
       setMobileMenu(false);
       setAuth(null);
       setData(emptyData);

@@ -9,10 +9,10 @@ router.use(requireAuth);
 router.get('/data', wrap(async (req, res) => {
   const [account, tasks, sessions, games, notes] = await Promise.all([
     User.findById(req.uid).select('name subscription'),
-    Task.find({ user: req.uid }),
-    Session.find({ user: req.uid }).sort('-createdAt').limit(200),
-    Game.find({ user: req.uid, finished: true }).sort('-createdAt').limit(200),
-    Note.find({ user: req.uid }).sort('-createdAt'),
+    Task.find({ user: req.uid }).select('title subject due minutes priority done completedAt').lean(),
+    Session.find({ user: req.uid }).select('seconds observed clear events createdAt').sort('-createdAt').limit(100).lean(),
+    Game.find({ user: req.uid, finished: true }).select('subject score createdAt').sort('-createdAt').limit(100).lean(),
+    Note.find({ user: req.uid }).select('topic body createdAt').sort('-createdAt').lean(),
   ]);
   res.json({
     name: account?.name || '',

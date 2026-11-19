@@ -22,6 +22,7 @@ export const Task = mongoose.model('Task', new Schema({
   done: { type: Boolean, default: false },
   completedAt: Date,
 }, { timestamps: true }));
+Task.schema.index({ user: 1, done: 1, due: 1 });
 
 export const Session = mongoose.model('Session', new Schema({
   user: Types.ObjectId,
@@ -30,6 +31,7 @@ export const Session = mongoose.model('Session', new Schema({
   clear: Number,
   events: Number,
 }, { timestamps: true }));
+Session.schema.index({ user: 1, createdAt: -1 });
 
 export const Game = mongoose.model('Game', new Schema({
   user: Types.ObjectId,
@@ -39,6 +41,7 @@ export const Game = mongoose.model('Game', new Schema({
   started: Date,
   finished: { type: Boolean, default: false },
 }, { timestamps: true }));
+Game.schema.index({ user: 1, finished: 1, score: -1 });
 
 export const ArenaRoom = mongoose.model('ArenaRoom', new Schema({
   code: { type: String, unique: true, required: true },
@@ -52,3 +55,4 @@ export const Note = mongoose.model('Note', new Schema({
   topic: String,
   body: String,
 }, { timestamps: true }));
+Note.schema.index({ user: 1, createdAt: -1 });

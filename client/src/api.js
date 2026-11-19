@@ -5,6 +5,7 @@ export async function api(url, body, method = body ? 'POST' : 'GET') {
   const response = await fetch(apiOrigin + '/api' + url, {
     method,
     credentials: 'include',
+    cache: method === 'GET' ? 'no-store' : 'default',
     headers: { 'Content-Type': 'application/json' },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });

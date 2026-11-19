@@ -1,11 +1,45 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { Game } from '../models.js';
+import { randomInt } from 'node:crypto';
+import { Game, ArenaRoom } from '../models.js';
 import { questions } from '../questions.js';
 import { requireAuth, wrap, validate, fail } from '../middleware/common.js';
 
 const router = Router();
 router.use(requireAuth);
+
+router.get('/stats', wrap(async (req, res) => {
+  const games = await Game.find({ user: req.uid, finished: true }).select('score');
+  res.json({
+    battles: games.length,
+    best: games.reduce((highest, game) => Math.max(highest, game.score), 0),
+    xp: games.reduce((total, game) => total + game.score, 0),
+  });
+}));
+
+router.post('/room/create', validate(z.object({
+  subject: z.string().refine((subject) => Object.hasOwn(questions, subject)),
+})), wrap(async (req, res) => {
+  let code;
+  do {
+    code = String(randomInt(100000, 1000000));
+  } while (await ArenaRoom.exists({ code }));
+  await ArenaRoom.create({ code, subject: req.body.subject, owner: req.uid, players: [req.uid] });
+  res.json({ code });
+}));
+
+router.post('/room/join', validate(z.object({
+  code: z.string().trim().regex(/^\d{6}$/),
+})), wrap(async (req, res) => {
+  const room = await ArenaRoom.findOne({ code: req.body.code });
+  if (!room) return fail(res, 'Room code not found', 404);
+  if (!room.players.some((player) => player.toString() === req.uid)) {
+    if (room.players.length >= 8) return fail(res, 'This room is full', 409);
+    room.players.push(req.uid);
+    await room.save();
+  }
+  res.json({ code: room.code, subject: room.subject, players: room.players.length });
+}));
 
 const publicQuestion = (game) => {
   const question = questions[game.subject][game.index];

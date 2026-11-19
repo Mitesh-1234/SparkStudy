@@ -40,6 +40,13 @@ export const Game = mongoose.model('Game', new Schema({
   finished: { type: Boolean, default: false },
 }, { timestamps: true }));
 
+export const ArenaRoom = mongoose.model('ArenaRoom', new Schema({
+  code: { type: String, unique: true, required: true },
+  subject: { type: String, required: true },
+  owner: Types.ObjectId,
+  players: [{ type: Types.ObjectId, ref: 'User' }],
+}, { timestamps: true }));
+
 export const Note = mongoose.model('Note', new Schema({
   user: Types.ObjectId,
   topic: String,

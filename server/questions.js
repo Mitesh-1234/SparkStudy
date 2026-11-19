@@ -26,6 +26,13 @@ export const questions={
         {q:'What does DNS mainly do?',o:['Encrypt files','Translate domain names to IP addresses','Assign MAC addresses','Compress packets'],a:1,e:'DNS resolves human-readable domain names to IP addresses.'},
         {q:'Which device commonly connects different networks?',o:['Hub','Repeater','Router','Keyboard'],a:2,e:'A router forwards packets between different networks.'},
         {q:'Which address is associated with a network interface at the data-link layer?',o:['MAC address','URL','Port number','Domain name'],a:0,e:'A MAC address identifies a network interface at the data-link layer.'}
+      ],
+      mixed:[
+        {q:'Which data structure follows the LIFO principle?',o:['Queue','Stack','Tree','Graph'],a:1,e:'A stack follows Last In, First Out.'},
+        {q:'Which SQL command is used to retrieve data?',o:['GET','OPEN','SELECT','FETCH TABLE'],a:2,e:'SELECT retrieves rows and columns.'},
+        {q:'Which keyword is used to create an object in Java?',o:['class','new','this','static'],a:1,e:'The new keyword creates a Java object.'},
+        {q:'How many layers are in the OSI model?',o:['4','5','7','8'],a:2,e:'The OSI reference model has seven layers.'},
+        {q:'Which key uniquely identifies each row in a table?',o:['Foreign key','Primary key','Alternate column','Duplicate key'],a:1,e:'A primary key uniquely identifies each record.'}
       ]
     };
     

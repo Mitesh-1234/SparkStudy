@@ -127,6 +127,44 @@
   main{padding-bottom:24px}
 }
 
+.arena-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.arena-metrics .panel{display:grid;gap:4px;margin:0;padding:22px}
+.arena-metrics strong{font-size:28px;color:#5144ad;line-height:1}
+.arena-metrics span{color:#777b93;font-size:13px}
+.arena-layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,.75fr);gap:16px}
+.arena-battle{margin:0;min-height:420px}
+.arena-battle-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.arena-battle-head h2{margin-bottom:4px}
+.arena-battle-head p{margin:0}
+.arena-solo{flex:none}
+.arena-setup{display:grid;grid-template-columns:1fr 1fr;margin:18px 0 14px}
+.arena-setup label{max-width:520px}
+.arena-friends{border:1px solid #eceaf5;border-radius:14px;padding:18px;background:#faf9ff;margin-top:14px}
+.arena-friends h3{margin:0 0 4px;color:#5144ad}
+.arena-friends p{margin:0 0 12px;font-size:13px}
+.arena-room-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.arena-room-actions button{width:100%}
+.arena-room-code{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:10px 12px;border-radius:10px;background:#efedff}
+.arena-room-code span{font-size:11px;color:#777b93}
+.arena-room-code strong{font-size:20px;letter-spacing:.12em;color:#5144ad}
+.arena-join{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}
+.arena-join input{text-transform:uppercase;letter-spacing:.14em}
+.arena-room-message{margin:10px 0 0!important;color:#5144ad!important}
+.arena-rule{margin-top:14px;padding:12px 14px;border-radius:10px;background:#f7f4ee;color:#8a6535;font-size:12px}
+.arena-timer{display:inline-block;margin:12px 0;padding:8px 10px;border-radius:9px;background:#efedff;color:#5144ad;font-weight:800}
+.arena-leaderboard{margin:0}
+.arena-leaderboard h2{margin-bottom:2px}
+.arena-leaderboard>p{font-size:13px}
+.arena-leader{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:8px;min-height:50px;padding:7px 8px;margin:5px 0;border-radius:9px}
+.arena-leader:nth-of-type(odd){background:#f8f7fc}
+.rank{width:25px;height:25px;border-radius:8px;display:grid;place-items:center;background:#eeebfa;color:#6356ce;font-size:12px;font-weight:850}
+.rank-1{background:#fff1c9;color:#a26e12}.rank-2{background:#edf0f7;color:#657087}.rank-3{background:#f4dfd1;color:#9a6546}
+.arena-leader strong{font-size:13px}
+.arena-ranks{margin-top:14px;padding:12px;border-radius:11px;background:#fdfaf3;color:#5f5b70}
+.arena-ranks h3{margin:0 0 8px;font-size:14px;color:#5144ad}
+.arena-ranks div{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin:4px 0}
+.arena-ranks div span{color:#777b93}
+
 /* Refined welcome presentation */
 .studyspark-welcome{
   position:relative;
@@ -258,6 +296,11 @@
 @keyframes welcomeGlow{0%,100%{transform:scale(.96);opacity:.75}50%{transform:scale(1.05);opacity:1}}
 
 @media(max-width:850px){
+  .arena-layout{grid-template-columns:1fr}
+  .arena-leaderboard{order:-1}
+}
+
+@media(max-width:850px){
   .studyspark-welcome{padding-top:22px}
   .welcome-art{min-height:360px}
   .welcome-window{transform:none;animation:none}
@@ -267,4 +310,13 @@
   .welcome-auth{padding:18px}
   .welcome-art{min-height:320px}
   .welcome-features{margin-top:24px}
+  .arena-metrics{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .arena-metrics .panel{padding:14px 10px}
+  .arena-metrics strong{font-size:22px}
+  .arena-battle-head{display:block}
+  .arena-solo{margin-top:12px;width:100%}
+  .arena-setup{grid-template-columns:1fr}
+  .arena-room-actions{grid-template-columns:1fr}
+  .arena-join{grid-template-columns:1fr}
+  .arena-join button{width:100%}
 }

@@ -1,21 +1,36 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from './api';
 
-const subjects = { dsa: 'Data Structures', dbms: 'DBMS', java: 'Java', networks: 'Computer Networks' };
+const subjects = {
+  mixed: 'Mixed challenge',
+  dsa: 'Data Structures',
+  dbms: 'DBMS',
+  java: 'Java',
+  networks: 'Computer Networks',
+};
 
 export default function Arena({ refresh }) {
-  const [subject, setSubject] = useState('dsa');
+  const [subject, setSubject] = useState('mixed');
   const [question, setQuestion] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [score, setScore] = useState(0);
+  const [stats, setStats] = useState({ battles: 0, best: 0, xp: 0 });
   const [leaders, setLeaders] = useState([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [roomCode, setRoomCode] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [roomMessage, setRoomMessage] = useState('');
   const [now, setNow] = useState(Date.now());
   const locked = useRef(false);
 
   useEffect(() => {
-    api('/leaderboard').then(setLeaders).catch((requestError) => setError(requestError.message));
+    Promise.all([api('/arena/stats'), api('/leaderboard')])
+      .then(([arenaStats, leaderboard]) => {
+        setStats(arenaStats);
+        setLeaders(leaderboard);
+      })
+      .catch((requestError) => setError(requestError.message));
     const timer = setInterval(() => setNow(Date.now()), 200);
     return () => clearInterval(timer);
   }, []);
@@ -30,6 +45,7 @@ export default function Arena({ refresh }) {
       setScore(result.score);
       if (result.finished) {
         await refresh();
+        setStats(await api('/arena/stats'));
         setLeaders(await api('/leaderboard'));
       }
     } catch (requestError) {
@@ -45,58 +61,152 @@ export default function Arena({ refresh }) {
     if (question && !feedback && !busy && now >= question.deadline) answer(-1);
   }, [now, question, feedback, busy]);
 
+  async function startBattle() {
+    setBusy(true);
+    setError('');
+    try {
+      setQuestion(await api('/arena/start', { subject }));
+      setFeedback(null);
+      setScore(0);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createRoom() {
+    setBusy(true);
+    setRoomMessage('');
+    try {
+      const room = await api('/arena/room/create', { subject });
+      setRoomCode(room.code);
+      setRoomMessage(`Room ${room.code} created`);
+    } catch (requestError) {
+      setRoomMessage(requestError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyInvite() {
+    if (!roomCode) return;
+    await navigator.clipboard?.writeText(roomCode);
+    setRoomMessage(`Invite code ${roomCode} copied`);
+  }
+
+  async function joinRoom() {
+    setBusy(true);
+    setRoomMessage('');
+    try {
+      const room = await api('/arena/room/join', { code: joinCode });
+      setRoomCode(room.code);
+      setSubject(room.subject);
+      setRoomMessage(`Joined room ${room.code} · ${room.players} player${room.players === 1 ? '' : 's'}`);
+    } catch (requestError) {
+      setRoomMessage(requestError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <>
-      <div className="heading"><small>PLAY / 03</small><h1>Study Battle Arena</h1><p>Timed solo quizzes and shared rankings</p></div>
-      <div className="split">
-        <section className="panel">
-          <h2>{question ? `Question ${question.index + 1} / ${question.total}` : 'Choose your challenge'}</h2>
-          {!question ? (
-            <>
-              <label>Subject<select value={subject} onChange={(event) => setSubject(event.target.value)}>
-                {Object.entries(subjects).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-              </select></label>
-              <button disabled={busy} onClick={async () => {
-                setBusy(true);
-                try {
-                  setQuestion(await api('/arena/start', { subject }));
-                  setFeedback(null);
-                  setScore(0);
-                  setError('');
-                } catch (requestError) { setError(requestError.message); }
-                finally { setBusy(false); }
-              }}>Start battle</button>
-            </>
-          ) : (
-            <>
-              <div className="notice">{feedback ? 'Answered' : `${Math.max(0, Math.ceil((question.deadline - now) / 1000))} seconds`} · {score} points</div>
-              <h3>{question.q}</h3>
-              {question.o.map((option, index) => (
-                <button key={index} disabled={busy || !!feedback}
-                  className={'option ' + (feedback?.answer === index ? 'correct' : '')}
-                  onClick={() => answer(index)}>{option}</button>
-              ))}
-              {feedback && <>
-                <p>{feedback.correct ? 'Correct! ' : 'Not quite. '}{feedback.explanation}</p>
-                <button disabled={busy} onClick={async () => {
-                  if (feedback.finished) { setQuestion(null); setFeedback(null); return; }
-                  setBusy(true);
-                  try {
-                    setQuestion(await api('/arena/next', feedback.next));
-                    setFeedback(null);
-                  } catch (requestError) { setError(requestError.message); setQuestion(null); setFeedback(null); }
-                  finally { setBusy(false); }
-                }}>{feedback.finished ? `Finish · ${score}/50` : 'Next question'}</button>
-              </>}
-            </>
-          )}
-          {error && <p className="error">{error}</p>}
-        </section>
-        <section className="panel">
-          <h2>Leaderboard</h2>
-          {leaders.map((leader, index) => <div key={index} className="line"><b>{index + 1}. {leader.name}</b><span>{leader.score}/50</span></div>)}
+      <div className="heading"><small>PLAY / 03</small><h1>Study Battle Arena</h1><p>Timed solo quizzes and friendly challenges</p></div>
+      <div className="arena-metrics">
+        <div className="panel"><strong>{stats.battles}</strong><span>Battles played</span></div>
+        <div className="panel"><strong>{stats.best}</strong><span>Best score</span></div>
+        <div className="panel"><strong>{stats.xp}</strong><span>Arena XP earned</span></div>
+      </div>
+
+      <div className="arena-layout">
+        <div className="arena-main">
+          <section className="panel arena-battle">
+            <div className="arena-battle-head">
+              <div>
+                <h2>{question ? `Question ${question.index + 1} / ${question.total}` : 'Ready for a battle?'}</h2>
+                <p>{question ? `${subject === 'mixed' ? 'Mixed challenge' : subjects[subject]} · ${score} points` : 'Choose a subject and test what you know.'}</p>
+              </div>
+              {!question && <button className="arena-solo" disabled={busy} onClick={startBattle}>Start battle</button>}
+            </div>
+
+            {!question ? (
+              <>
+                <div className="arena-setup">
+                  <label>Choose subject
+                    <select value={subject} onChange={(event) => setSubject(event.target.value)}>
+                      {Object.entries(subjects).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="arena-friends">
+                  <h3>Challenge friends</h3>
+                  <p>Create a private room or enter a friend's room code to prepare a head-to-head study battle.</p>
+                  <div className="arena-room-actions">
+                    <button type="button" className="secondary" disabled={busy} onClick={createRoom}>Create friend room</button>
+                    <button type="button" className="secondary" disabled={!roomCode} onClick={copyInvite}>Copy invite code</button>
+                  </div>
+                  {roomCode && <div className="arena-room-code"><span>ROOM CODE</span><strong>{roomCode}</strong></div>}
+                  <div className="arena-join">
+                    <input inputMode="numeric" maxLength="6" value={joinCode}
+                      onChange={(event) => setJoinCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="ENTER 6-DIGIT CODE" aria-label="Room code" />
+                    <button type="button" disabled={busy || joinCode.length !== 6} onClick={joinRoom}>Join room</button>
+                  </div>
+                  {roomMessage && <p className="arena-room-message">{roomMessage}</p>}
+                </div>
+                <div className="arena-rule">Each battle has 5 questions. Correct answers earn up to 10 points; quick answers earn a speed bonus. Read the explanation after each answer.</div>
+              </>
+            ) : (
+              <>
+                <div className="arena-timer">{feedback ? 'Answered' : `${Math.max(0, Math.ceil((question.deadline - now) / 1000))} seconds`} · {score} points</div>
+                <h3>{question.q}</h3>
+                {question.o.map((option, index) => (
+                  <button key={index} disabled={busy || !!feedback}
+                    className={'option ' + (feedback?.answer === index ? 'correct' : '')}
+                    onClick={() => answer(index)}>{option}</button>
+                ))}
+                {feedback && <>
+                  <p>{feedback.correct ? 'Correct! ' : 'Not quite. '}{feedback.explanation}</p>
+                  <button disabled={busy} onClick={async () => {
+                    if (feedback.finished) { setQuestion(null); setFeedback(null); return; }
+                    setBusy(true);
+                    try {
+                      setQuestion(await api('/arena/next', feedback.next));
+                      setFeedback(null);
+                    } catch (requestError) {
+                      setError(requestError.message);
+                      setQuestion(null);
+                      setFeedback(null);
+                    } finally { setBusy(false); }
+                  }}>{feedback.finished ? `Finish · ${score}/50` : 'Next question'}</button>
+                </>}
+              </>
+            )}
+            {error && <p className="error">{error}</p>}
+          </section>
+        </div>
+
+        <aside className="arena-leaderboard panel">
+          <h2>Arena leaderboard</h2>
+          <p>Today's top scores</p>
+          {leaders.map((leader, index) => (
+            <div className="arena-leader" key={`${leader.name}-${index}`}>
+              <span className={'rank rank-' + (index + 1)}>{index + 1}</span>
+              <b>{leader.name}</b>
+              <strong>{leader.score} pts</strong>
+            </div>
+          ))}
           {!leaders.length && <p>No completed battles yet.</p>}
-        </section>
+          <div className="arena-ranks">
+            <h3>Earn your title</h3>
+            <div><span>0-19</span><b>Rookie Spark</b></div>
+            <div><span>20-34</span><b>Quick Thinker</b></div>
+            <div><span>35-44</span><b>Knowledge Knight</b></div>
+            <div><span>45-50</span><b>Study Champion</b></div>
+          </div>
+        </aside>
       </div>
     </>
   );

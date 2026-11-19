@@ -27,14 +27,33 @@ export default function Arena({ refresh }) {
   const locked = useRef(false);
 
   useEffect(() => {
-    Promise.all([api('/arena/stats'), api('/leaderboard')])
-      .then(([arenaStats, leaderboard]) => {
-        setStats(arenaStats);
-        setLeaders(leaderboard);
-      })
-      .catch((requestError) => setError(requestError.message));
-    const timer = setInterval(() => setNow(Date.now()), 200);
-    return () => clearInterval(timer);
+    let active = true;
+    async function refreshArena() {
+      try {
+        const [arenaStats, leaderboard] = await Promise.all([api('/arena/stats'), api('/leaderboard')]);
+        if (active) {
+          setStats(arenaStats);
+          setLeaders(leaderboard);
+        }
+      } catch (requestError) {
+        if (active) setError(requestError.message);
+      }
+    }
+    refreshArena();
+    const arenaTimer = setInterval(refreshArena, 10000);
+    const clockTimer = setInterval(() => setNow(Date.now()), 200);
+    function refreshOnFocus() {
+      if (!document.hidden) refreshArena();
+    }
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnFocus);
+    return () => {
+      active = false;
+      clearInterval(arenaTimer);
+      clearInterval(clockTimer);
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnFocus);
+    };
   }, []);
 
   useEffect(() => {

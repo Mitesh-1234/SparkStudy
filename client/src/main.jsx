@@ -22,6 +22,7 @@ function readCachedData() {
 function writeCachedData(account) {
   try {
     sessionStorage.setItem(dataCacheKey, JSON.stringify(account));
+    window.dispatchEvent(new CustomEvent('studyspark-data', { detail: account }));
   } catch {}
 }
 
@@ -54,17 +55,61 @@ function App() {
 
   useEffect(() => {
     let active = true;
-    refresh().catch((requestError) => {
-      if (!active) return;
-      setError(requestError.message);
-      if (requestError.message === 'Please sign in') {
-        sessionStorage.removeItem(dataCacheKey);
-        setAuth(null);
-        setData(emptyData);
+    async function refreshSession() {
+      try {
+        await refresh();
+        if (active) setError('');
+      } catch (requestError) {
+        if (!active) return;
+        setError(requestError.message);
+        if (requestError.message === 'Please sign in') {
+          sessionStorage.removeItem(dataCacheKey);
+          setAuth(null);
+          setData(emptyData);
+        }
       }
-    });
-    return () => { active = false; };
+    }
+
+    refreshSession();
+    const timer = setInterval(refreshSession, 10000);
+    function refreshOnFocus() {
+      if (!document.hidden) refreshSession();
+    }
+    function refreshOnOnline() {
+      refreshSession();
+    }
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnFocus);
+    window.addEventListener('online', refreshOnOnline);
+
+    return () => {
+      active = false;
+      clearInterval(timer);
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnFocus);
+      window.removeEventListener('online', refreshOnOnline);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!auth) return undefined;
+    function storageChanged(event) {
+      if (event.key === dataCacheKey && event.newValue) {
+        try {
+          setData(JSON.parse(event.newValue));
+        } catch {}
+      }
+    }
+    function dataChanged(event) {
+      if (event.detail) setData(event.detail);
+    }
+    window.addEventListener('storage', storageChanged);
+    window.addEventListener('studyspark-data', dataChanged);
+    return () => {
+      window.removeEventListener('storage', storageChanged);
+      window.removeEventListener('studyspark-data', dataChanged);
+    };
+  }, [auth]);
 
   function logout() {
     api('/auth/logout', undefined, 'POST').finally(() => {

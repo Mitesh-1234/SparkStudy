@@ -48,6 +48,11 @@ export const ArenaRoom = mongoose.model('ArenaRoom', new Schema({
   subject: { type: String, required: true },
   owner: Types.ObjectId,
   players: [{ type: Types.ObjectId, ref: 'User' }],
+  status: { type: String, enum: ['waiting', 'playing', 'finished'], default: 'waiting' },
+  index: { type: Number, default: 0 },
+  startedAt: Date,
+  scores: { type: Map, of: Number, default: {} },
+  answered: { type: Map, of: Boolean, default: {} },
 }, { timestamps: true }));
 
 export const Note = mongoose.model('Note', new Schema({

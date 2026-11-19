@@ -165,6 +165,15 @@
 .arena-ranks div{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin:4px 0}
 .arena-ranks div span{color:#777b93}
 
+.arena-live-room{margin-top:12px;padding:12px;border:1px solid #dfdbea;border-radius:12px;background:#fff}
+.arena-live-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.arena-live-head span{color:#777b93;font-size:12px}
+.arena-live-room>button{width:100%;margin:4px 0 10px}
+.arena-room-battle{margin-top:8px}
+.arena-room-scores{display:grid;gap:5px;margin-top:10px;padding-top:8px;border-top:1px solid #eeeef5}
+.arena-room-scores div{display:flex;justify-content:space-between;align-items:center;padding:5px 2px}
+.arena-room-scores span{color:#6356ce;font-weight:800}
+
 /* Refined welcome presentation */
 .studyspark-welcome{
   position:relative;

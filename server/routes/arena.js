@@ -41,6 +41,100 @@ router.post('/room/join', validate(z.object({
   res.json({ code: room.code, subject: room.subject, players: room.players.length });
 }));
 
+router.get('/room/:code', wrap(async (req, res) => {
+  const room = await ArenaRoom.findOne({ code: req.params.code })
+    .populate('players', 'name');
+  if (!room) return fail(res, 'Room code not found', 404);
+  if (!room.players.some((player) => player.id === req.uid)) {
+    return fail(res, 'Join this room before viewing it', 403);
+  }
+  const data = room.status === 'waiting' || room.status === 'finished'
+    ? null
+    : questions[room.subject][room.index];
+  res.json({
+    code: room.code,
+    subject: room.subject,
+    owner: room.owner.toString(),
+    isOwner: room.owner.toString() === req.uid,
+    status: room.status,
+    index: room.index,
+    startedAt: room.startedAt,
+    players: room.players.map((player) => ({
+      id: player.id,
+      name: player.name,
+      score: room.scores?.get?.(player.id) || 0,
+    })),
+    question: data ? { q: data.q, o: data.o, total: questions[room.subject].length } : null,
+  });
+}));
+
+router.post('/room/start', validate(z.object({
+  code: z.string().trim().regex(/^\d{6}$/),
+})), wrap(async (req, res) => {
+  const room = await ArenaRoom.findOne({ code: req.body.code });
+  if (!room) return fail(res, 'Room code not found', 404);
+  if (room.owner.toString() !== req.uid) return fail(res, 'Only the room creator can start', 403);
+  if (room.status === 'waiting') {
+    room.status = 'playing';
+    room.index = 0;
+    room.startedAt = new Date();
+    room.answered = new Map();
+    await room.save();
+  }
+  res.json({ ok: true });
+}));
+
+router.post('/room/answer', validate(z.object({
+  code: z.string().trim().regex(/^\d{6}$/),
+  choice: z.number().int().min(-1).max(3),
+})), wrap(async (req, res) => {
+  const room = await ArenaRoom.findOne({ code: req.body.code });
+  if (!room) return fail(res, 'Room code not found', 404);
+  if (room.status !== 'playing') return fail(res, 'Battle is not active', 409);
+  if (!room.players.some((player) => player.toString() === req.uid)) {
+    return fail(res, 'Join this room before answering', 403);
+  }
+  const playerKey = String(req.uid);
+  const answerKey = `${room.index}:${playerKey}`;
+  if (room.answered?.get(answerKey)) return fail(res, 'Answer already submitted', 409);
+
+  const question = questions[room.subject][room.index];
+  const elapsed = Date.now() - new Date(room.startedAt).getTime();
+  const correct = elapsed <= 20500 && req.body.choice === question.a;
+  const points = correct ? (elapsed < 10000 ? 10 : 8) : 0;
+  const nextScore = (room.scores?.get(playerKey) || 0) + points;
+  room.scores.set(playerKey, nextScore);
+  room.answered.set(answerKey, true);
+
+  const finished = room.index + 1 === questions[room.subject].length
+    && room.players.every((player) => room.answered?.get(`${room.index}:${player.toString()}`));
+  if (room.players.every((player) => room.answered?.get(`${room.index}:${player.toString()}`))) {
+    if (room.index + 1 < questions[room.subject].length) {
+      room.index += 1;
+      room.startedAt = new Date();
+    } else {
+      room.status = 'finished';
+    }
+  }
+  await room.save();
+
+  const personalGame = await Game.create({
+    user: req.uid,
+    subject: room.subject,
+    index: finished ? questions[room.subject].length : room.index,
+    score: nextScore,
+    finished,
+  });
+  if (finished) await personalGame.save();
+  res.json({
+    correct,
+    answer: question.a,
+    explanation: question.e,
+    score: nextScore,
+    finished: room.status === 'finished',
+  });
+}));
+
 const publicQuestion = (game) => {
   const question = questions[game.subject][game.index];
   return {

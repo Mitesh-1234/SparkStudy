@@ -21,6 +21,8 @@ export default function Arena({ refresh }) {
   const [roomCode, setRoomCode] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [roomMessage, setRoomMessage] = useState('');
+  const [roomState, setRoomState] = useState(null);
+  const [roomFeedback, setRoomFeedback] = useState(null);
   const [now, setNow] = useState(Date.now());
   const locked = useRef(false);
 
@@ -34,6 +36,29 @@ export default function Arena({ refresh }) {
     const timer = setInterval(() => setNow(Date.now()), 200);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!roomCode) return undefined;
+    let active = true;
+    async function loadRoom() {
+      try {
+        const state = await api('/arena/room/' + roomCode);
+        if (active) setRoomState(state);
+      } catch (requestError) {
+        if (active) setRoomMessage(requestError.message);
+      }
+    }
+    loadRoom();
+    const timer = setInterval(loadRoom, 1000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [roomCode]);
+
+  useEffect(() => {
+    setRoomFeedback(null);
+  }, [roomState?.index, roomState?.status]);
 
   async function answer(choice) {
     if (locked.current || !question || feedback) return;
@@ -108,6 +133,34 @@ export default function Arena({ refresh }) {
     } finally {
       setBusy(false);
     }
+
+    async function startRoom() {
+      setBusy(true);
+      setRoomMessage('');
+      setRoomFeedback(null);
+      try {
+        await api('/arena/room/start', { code: roomCode });
+        setRoomState(await api('/arena/room/' + roomCode));
+      } catch (requestError) {
+        setRoomMessage(requestError.message);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function answerRoom(choice) {
+      if (roomFeedback || busy) return;
+      setBusy(true);
+      try {
+        const result = await api('/arena/room/answer', { code: roomCode, choice });
+        setRoomFeedback(result);
+        setRoomState(await api('/arena/room/' + roomCode));
+      } catch (requestError) {
+        setRoomMessage(requestError.message);
+      } finally {
+        setBusy(false);
+      }
+    }
   }
 
   return (
@@ -155,6 +208,34 @@ export default function Arena({ refresh }) {
                     <button type="button" disabled={busy || joinCode.length !== 6} onClick={joinRoom}>Join room</button>
                   </div>
                   {roomMessage && <p className="arena-room-message">{roomMessage}</p>}
+                  {roomCode && roomState && (
+                    <div className="arena-live-room">
+                      <div className="arena-live-head">
+                        <strong>{roomState.status === 'waiting' ? 'Waiting room' : roomState.status === 'finished' ? 'Battle finished' : `Question ${roomState.index + 1} / ${roomState.question?.total || 5}`}</strong>
+                        <span>{roomState.players.length} player(s)</span>
+                      </div>
+                      {roomState.status === 'waiting' && roomState.isOwner && (
+                        <button type="button" disabled={busy} onClick={startRoom}>Start friend battle</button>
+                      )}
+                      {roomState.status === 'waiting' && !roomState.isOwner && (
+                        <p>Waiting for the room creator to start.</p>
+                      )}
+                      {roomState.status === 'playing' && roomState.question && (
+                        <div className="arena-room-battle">
+                          <h3>{roomState.question.q}</h3>
+                          {roomState.question.o.map((option, index) => (
+                            <button key={option} type="button" disabled={busy || !!roomFeedback}
+                              className={'option ' + (roomFeedback?.answer === index ? 'correct' : '')}
+                              onClick={() => answerRoom(index)}>{option}</button>
+                          ))}
+                          {roomFeedback && <p>{roomFeedback.correct ? 'Correct! ' : 'Not quite. '}{roomFeedback.explanation}</p>}
+                        </div>
+                      )}
+                      <div className="arena-room-scores">
+                        {roomState.players.map((player) => <div key={player.id}><b>{player.name}</b><span>{player.score} pts</span></div>)}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="arena-rule">Each battle has 5 questions. Correct answers earn up to 10 points; quick answers earn a speed bonus. Read the explanation after each answer.</div>
               </>

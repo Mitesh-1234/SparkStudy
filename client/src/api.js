@@ -9,7 +9,16 @@ export async function api(url, body, method = body ? 'POST' : 'GET') {
     headers: { 'Content-Type': 'application/json' },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  const payload = await response.json();
-  if (!response.ok) throw Error(payload.error || 'Request failed');
+  const text = await response.text();
+  let payload = {};
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      if (response.status === 429) throw Error('Too many requests. Please wait and try again.');
+      throw Error(response.ok ? 'Invalid server response' : `Server error (${response.status})`);
+    }
+  }
+  if (!response.ok) throw Error(payload.error || `Request failed (${response.status})`);
   return payload;
 }
